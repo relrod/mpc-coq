@@ -1,6 +1,7 @@
-Require Import Ascii String FunctionalExtensionality.
+Require Import Ascii Basics FunctionalExtensionality List String.
 
 Open Scope string.
+Open Scope list.
 
 Definition parser a := string -> option (a * string).
 
@@ -90,7 +91,6 @@ Proof.
   reflexivity.
 Qed.
 
-Definition sat (f : ascii -> bool) : parser ascii :=
 Definition map {t u} (f : t -> u) (p : parser t) : parser u :=
   p >>= (compose ret f).
 
@@ -106,9 +106,10 @@ Proof.
   reflexivity.
 Qed.
 
+Definition sat (f : ascii -> bool) : parser ascii :=
   item >>= fun x => if f x then ret x else fail.
 
-Definition eq_char c := sat (fun x => if ascii_dec c x then true else false).
+Definition ch c := sat (fun x => if ascii_dec c x then true else false).
 
 Notation "a <= b" := (Compare_dec.leb (nat_of_ascii a) (nat_of_ascii b)).
 
@@ -149,13 +150,66 @@ Proof.
   trivial.
 Qed.
 
-
 Definition digit := range_inclusive "0" "9".
 Definition lc_char := range_inclusive "a" "z".
 Definition uc_char := range_inclusive "A" "Z".
 Definition is_char := lc_char <|> uc_char.
+Fixpoint str s :=
+  match s with
+  | "" => ret ""
+  | String c cs => ch c >>=
+                           fun _ => str cs >>=
+                                        fun _ => ret (String c cs)
+  end.
+
+Definition ignore_left {t u} (p : parser t) (q : parser u) : parser u :=
+  p >>= fun _ => q.
+
+Notation "x *> y" := (ignore_left x y) (at level 60).
+
+Definition ignore_right {t u} (p : parser t) (q : parser u) : parser t :=
+  p >>= (fun z => q >>= fun _ => ret z).
+
+Notation "x <* y" := (ignore_right x y) (at level 60).
+
+Definition between {t u v} (bra : parser t) (ket : parser u) (p : parser v) : parser v :=
+  bra *> p <* ket.
+
+Notation "x << y >> z" := (between x z y) (at level 60).
+
+Example between_ex :
+  (ch "(" << digit >> ch ")") "(2)bar" = Some ("2"%char, "bar").
+Proof. reflexivity. Qed.
+
+(* Copied from SF *)
+Fixpoint many_guarded {t} d (p : parser t) acc xs :=
+  match d, p xs with
+    | 0, _ => None
+    | _, None => Some (List.rev acc, xs)
+    | S n, Some (t', xs') => many_guarded n p (t' :: acc) xs'
+  end.
+
+Definition many {t} (p : parser t) :=
+  fun i => many_guarded (String.length i) p nil i.
+
+Example many_ex :
+  many digit "1234asdf" =
+  Some ("1"%char :: "2"%char :: "3"%char :: "4"%char :: nil, "asdf").
+Proof. reflexivity. Qed.
+
+Definition sepBy1 {t u} (p : parser t) (sep : parser u) :=
+  (p >>= fun x =>
+           many (sep >>= fun _ => p) >>= fun xs =>
+                                           ret (x :: xs)).
+
+Notation "x // y" := (sepBy1 x y) (at level 60).
+
+Definition ints := ch "[" << many digit // ch "," >> ch "]".
+
+Eval compute in ints "[1,2,3]".
+
 
 (*
 Require Import ExtrOcamlString.
 Extraction Language Ocaml.
-Extraction "parsercombinator.ml" parser fail ret item tail ascii_or_empty flatmap sat choice range_inclusive eq_char.*).
+Extraction "parsercombinator.ml" parser fail ret item tail ascii_or_empty flatmap sat choice range_inclusive ch.*).
