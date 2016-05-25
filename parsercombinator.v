@@ -91,6 +91,21 @@ Proof.
 Qed.
 
 Definition sat (f : ascii -> bool) : parser ascii :=
+Definition map {t u} (f : t -> u) (p : parser t) : parser u :=
+  p >>= (compose ret f).
+
+Lemma functor_pres_id : forall {t} (p : parser t), map id p = p.
+Proof.
+  intros.
+  unfold map.
+  unfold flatmap.
+  extensionality x.
+  destruct (p x).
+  destruct p0.
+  reflexivity.
+  reflexivity.
+Qed.
+
   item >>= fun x => if f x then ret x else fail.
 
 Definition eq_char c := sat (fun x => if ascii_dec c x then true else false).
