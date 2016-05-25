@@ -1,4 +1,4 @@
-Require Import Ascii String.
+Require Import Ascii String FunctionalExtensionality.
 
 Open Scope string.
 
@@ -57,6 +57,32 @@ Definition flatmap {t u} (p : parser t) (f : t -> parser u) : parser u :=
            end.
 
 Notation "f >>= g" := (flatmap f g) (at level 60, right associativity).
+
+Lemma monad_left_id :
+  forall {t u} (p : parser t) (f : t -> parser u) (a : t),
+    ret a >>= f = f a.
+Proof. reflexivity. Qed.
+
+Lemma monad_right_id :
+  forall {t} (p : parser t),
+    p >>= ret = p.
+Proof.
+  intros.
+  unfold ret.
+  unfold flatmap.
+  extensionality x.
+  destruct (p x).
+  destruct p0.
+  reflexivity.
+  reflexivity.
+Qed.
+
+Lemma monad_assoc :
+  forall {t u v} (p : parser t) (f : t -> parser u) (g : u -> parser v),
+    (p >>= f) >>= g = p >>= (fun x => f x >>= g).
+Proof.
+  give_up.
+Admitted.
 
 Definition sat (f : ascii -> bool) : parser ascii :=
   item >>= fun x => if f x then ret x else fail.
