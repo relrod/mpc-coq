@@ -81,8 +81,14 @@ Lemma monad_assoc :
   forall {t u v} (p : parser t) (f : t -> parser u) (g : u -> parser v),
     (p >>= f) >>= g = p >>= (fun x => f x >>= g).
 Proof.
-  give_up.
-Admitted.
+  intros.
+  unfold flatmap.
+  extensionality x.
+  destruct (p x).
+  destruct p0.
+  reflexivity.
+  reflexivity.
+Qed.
 
 Definition sat (f : ascii -> bool) : parser ascii :=
   item >>= fun x => if f x then ret x else fail.
