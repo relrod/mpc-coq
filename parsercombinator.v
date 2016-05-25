@@ -58,6 +58,9 @@ Definition flatmap {t u} (p : parser t) (f : t -> parser u) : parser u :=
            end.
 
 Notation "f >>= g" := (flatmap f g) (at level 60, right associativity).
+Notation "f >> g" := (f >>= fun _ => g) (at level 60, right associativity).
+Notation "'do' a <- e ; c" := (e >>= (fun a => c)) (at level 60, right associativity).
+Notation "f ;; g" := (f >> g) (at level 60, right associativity).
 
 Lemma monad_left_id :
   forall {t u} (p : parser t) (f : t -> parser u) (a : t),
@@ -175,10 +178,10 @@ Notation "x <* y" := (ignore_right x y) (at level 60).
 Definition between {t u v} (bra : parser t) (ket : parser u) (p : parser v) : parser v :=
   bra *> p <* ket.
 
-Notation "x << y >> z" := (between x z y) (at level 60).
+Notation "x {{ y }} z" := (between x z y) (at level 60).
 
 Example between_ex :
-  (ch "(" << digit >> ch ")") "(2)bar" = Some ("2"%char, "bar").
+  (ch "(" {{ digit }} ch ")") "(2)bar" = Some ("2"%char, "bar").
 Proof. reflexivity. Qed.
 
 (* Copied from SF *)
@@ -204,12 +207,39 @@ Definition sepBy1 {t u} (p : parser t) (sep : parser u) :=
 
 Notation "x // y" := (sepBy1 x y) (at level 60).
 
-Definition ints := ch "[" << many digit // ch "," >> ch "]".
 
-Eval compute in ints "[1,2,3]".
 
+
+
+
+
+(* Silly time parse example *)
+Record time := mkTime {
+                   hours : ascii * ascii;
+                   minutes : ascii * ascii;
+                   seconds : ascii * ascii;
+                   period : string
+                 }.
+
+Definition h_m_s_time :=
+  do h1 <- digit;
+  do h2 <- digit;
+  ch ":";;
+  do m1 <- digit;
+  do m2 <- digit;
+  ch ":";;
+  do s1 <- digit;
+  do s2 <- digit;
+  do period <- (str "pm" <|> str "am");
+  ret (mkTime (h1, h2) (m1, m2) (s1, s2) period).
+
+Eval compute in h_m_s_time "12:34:56pm".
+
+Definition js_number_array := ch "[" {{ many digit // ch "," }} ch "]".
+Eval compute in js_number_array "[1,2,3];".
 
 (*
 Require Import ExtrOcamlString.
 Extraction Language Ocaml.
-Extraction "parsercombinator.ml" parser fail ret item tail ascii_or_empty flatmap sat choice range_inclusive ch.*).
+Extraction "parsercombinator.ml" parser fail ret item tail ascii_or_empty flatmap sat choice range_inclusive ch between many sepBy1 time mkTime h_m_s_time.
+*)
