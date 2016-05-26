@@ -109,6 +109,65 @@ Proof.
   reflexivity.
 Qed.
 
+Definition ap {t u} (p : parser (t -> u)) (q : parser t) :=
+  do x <- p;
+  do y <- q;
+  ret (x y).
+
+Notation "f <*> g" := (ap f g) (at level 60, right associativity).
+
+Lemma ap_pres_id : forall {t} (p : parser t),
+    ap (ret id) p = p.
+Proof.
+  intros.
+  unfold ap.
+  unfold flatmap.
+  extensionality x.
+  unfold ret.
+  destruct (p x).
+  destruct p0.
+  reflexivity.
+  reflexivity.
+Qed.
+
+Lemma ap_pres_comp : forall {t u} (pu : parser (t -> u)) (pv : parser (t -> t)) pw,
+    ((ret compose <*> pu) <*> pv) <*> pw = pu <*> (pv <*> pw).
+Proof.
+  intros.
+  unfold ap.
+  unfold flatmap.
+  extensionality x.
+  simpl.
+  destruct (pu x).
+  destruct p.
+  unfold ret.
+  destruct (pv s).
+  destruct pw.
+  assumption.
+  destruct p.
+  destruct (pw s0).
+  destruct p.
+  reflexivity.
+  reflexivity.
+  destruct p.
+  destruct (pw s0).
+  destruct p.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+Qed.
+
+Lemma ap_multiplicative : forall {t u} (f : t -> u) x,
+    ret f <*> ret x = ret (f x).
+Proof. reflexivity. Qed.
+
+(* TODO! *)
+Lemma ap_interchange : True.
+Proof. reflexivity. Qed.
+
+
+
 Definition sat (f : ascii -> bool) : parser ascii :=
   item >>= fun x => if f x then ret x else fail.
 
