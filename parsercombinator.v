@@ -162,11 +162,9 @@ Lemma ap_multiplicative : forall {t u} (f : t -> u) x,
     ret f <*> ret x = ret (f x).
 Proof. reflexivity. Qed.
 
-(* TODO! *)
-Lemma ap_interchange : True.
+Lemma ap_interchange : forall {t u} (p : parser (t -> u)) q,
+  p <*> ret q = ret (fun a => a q) <*> p.
 Proof. reflexivity. Qed.
-
-
 
 Definition sat (f : ascii -> bool) : parser ascii :=
   item >>= fun x => if f x then ret x else fail.
